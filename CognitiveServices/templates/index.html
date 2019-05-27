@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cognitive Service</title>
+
+    <style>
+        .result-area {
+            width: 50vw;
+            height: 50vh;
+            position: absolute;
+            background: #333;
+            color: #ddd;
+            font: normal 1em sans-serif;
+        }
+
+        .result-area-upper-left {
+            left: 0;
+            top: 0;
+        }
+
+        .result-area-upper-right {
+            right: 0;
+            top: 0;
+            border-left: 0.1em solid #555;
+        }
+
+        .result-area-bottom-left {
+            left: 0;
+            bottom: 0;
+        }
+
+        .result-area-bottom-right {
+            right: 0;
+            bottom: 0;
+            border-left: 0.1em solid #555;
+        }
+
+        .result-area h1 {
+            margin: 0;
+            padding: 0.2em;
+            background: #555;
+        }
+
+        .result-area .result {
+            overflow:hidden;
+            width: calc(100% - 2em);
+            height: calc(100% - 5em);
+            margin: 1em;
+            display: block;
+        }
+
+        .speaker-1 {
+            color: #F00;
+        }
+        .speaker-2 {
+            color: #0F0;
+        }
+        .speaker-3 {
+            color: #00F;
+        }
+        .speaker-4 {
+            color: #FFF;
+        }
+
+        .result-area ul, .result-area li{
+            list-style:none;
+            margin:0;
+            padding:0;
+            }
+    </style>
+</head>
+
+<body>
+    <div class="container">
+        <div class="result-area result-area-upper-left">
+            <h1>Microsoft</h1>
+            <div class="result" id="microsoft">
+                ....
+            </div>
+        </div>
+        <div class="result-area result-area-upper-right">
+            <h1>Google</h1>
+            <div class="result" id="google">
+                ....
+            </div>
+
+        </div>
+        <div class="result-area result-area-bottom-left">
+            <h1>IBM</h1>
+            <div class="result" id="ibm">
+                ....
+            </div>
+
+        </div>
+        <div class="result-area result-area-bottom-right">
+            <h1>Amazon</h1>
+            <div class="result" id="amazon">
+                .... Amazon Doesn't support Speech to Text Stream in Python ....
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+            var websocket = new WebSocket("ws://127.0.0.1:8765");
+
+            var res = {};
+            websocket.onmessage = function(event) {
+                var data = JSON.parse(event.data);
+                if (!res.hasOwnProperty(data.service)) {
+                    res[data.service] = [];
+                }
+                console.log(data.emotion);
+
+                var confidenceText = "";
+
+                if (data.confidence != -1){
+                    confidenceText = " (confidence: " + data.confidence + ")";
+                }
+
+                var text = data.result + confidenceText;
+                if (data.speaker != -1) {
+                    text = "<span class=\"speaker-" + data.speaker + "\">Speaker " + data.speaker + ": " + text + "</span>";
+                }
+                if (data.score != -1) {
+                    text += "(Sentiment:" + data.score + ")";
+                }
+
+                if (data.emotion != null) {
+                    text += "(Emotion: <img src=\"/static/emoji/" + data.emotion.tone_id+".png\" width=18 height=18>)";
+                }
+
+                res[data.service].push(text);
+                if (res[data.service].length > 1000) {
+                    res[data.service].pop(0);
+                }
+
+                var html = "<ul>";
+
+                for (var k in res[data.service]) {
+                    html+="<li>" + res[data.service][res[data.service].length - k - 1] + "</li>";
+                }
+                html+="</ul>";
+
+
+                document.getElementById(data.service).innerHTML = html;
+                console.log(data);
+            }
+    </script>
+</body>
+</html>
