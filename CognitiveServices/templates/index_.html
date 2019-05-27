@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Cognitive Service</title>
+
+    <style>
+        html, body {
+            height: 100%;
+            width:100%;
+            margin: 0px;
+            font: normal 1em sans-serif;
+            color:#FFF;
+            background: #333;
+        }
+
+        .container {
+            display: flex;
+            flex-wrap: nowrap;
+        }
+
+        .result-area {
+            height: 100%;
+            width:80%;
+            background: #333;
+            color: #ddd;
+        }
+
+        .result-area-middle {
+            right: 0;
+            bottom: 0;
+            border-left: 0.1em solid #555;
+            min-height:300px;
+        }
+
+        .result-area h1 {
+            margin: 0;
+            padding: 0.2em;
+            background: #555;
+            text-transform: uppercase;
+        }
+
+        .result-area .result {
+            overflow:hidden;
+            width: calc(100% - 2em);
+            height: calc(100% - 5em);
+            margin: 1em;
+            display: block;
+        }
+
+        .speaker-1 {
+            color: #F00;
+        }
+        .speaker-2 {
+            color: #0F0;
+        }
+        .speaker-3 {
+            color: #00F;
+        }
+        .speaker-4 {
+            color: #FFF;
+        }
+
+        .select-area input[type=submit]{
+            width:50%;
+            height:30px;
+            display:block;
+            margin:10px 30px;
+        }
+
+        .select-area input[type=radio]{
+            margin-left:30px;
+        }
+
+        .select-area{
+            width:20%;
+        }
+
+        .select-area p {
+            margin-left:30px;
+        }
+    </style>
+</head>
+
+<body onload="onload()">
+    <div class="container">
+        <div class="select-area select-radio">
+            <p>Please select a service<p>
+            <div>
+                <input type="radio" name="r-service" value="microsoft" id="microsoft" class="selectable-service" checked="checked"><label for="microsoft">Microsoft</label>
+            </div>
+            <div>
+                <input type="radio" name="r-service" value="google" id="google" class="selectable-service"><label for="google">Google</label>
+            </div>
+            <div>
+                <input type="radio" name="r-service" value="ibm" id="ibm" class="selectable-service"><label for="ibm">IBM</label>
+            </div>
+            <div>
+                <input type="radio" name="r-service" value="amazon" id="amazon" class="selectable-service"><label for="amazon">Amazon</label>
+            </div>
+        </div>
+        <div class="result-area result-area-middle">
+            <h1 id="service-selected">Microsoft</h1>
+            <div class="result" id="result">
+                ....
+            </div>
+        </div>
+    </div>
+
+    <script>
+        var res = {};
+        function onload(){
+            var radios = document.getElementsByClassName("selectable-service");
+            for (var i = 0, length = radios.length; i < length; i++) {
+                radios[i].onclick = function(e) {
+                    document.getElementById("service-selected").innerHTML = e.target.value;
+                    if (!res.hasOwnProperty(e.target.value)) {
+                        res[e.target.value] = [];
+                    }
+                    var html = "<ul>";
+
+                    for (var k in res[e.target.value]) {
+                        html+="<li>" + res[e.target.value][res[e.target.value].length - k - 1] + "</li>";
+                    }
+                    html+="</ul>";
+                    document.getElementById("result").innerHTML = html;
+
+                }
+            }
+        }
+        var websocket = new WebSocket("ws://127.0.0.1:8765");
+
+        websocket.onmessage = function(event) {
+            var data = JSON.parse(event.data);
+            if (!res.hasOwnProperty(data.service)) {
+                res[data.service] = [];
+            }
+            console.log(data);
+
+            var confidenceText = "";
+
+            if (data.confidence != -1){
+                confidenceText = " (confidence: " + data.confidence + ")";
+            }
+
+            var text = data.result + confidenceText;
+            if (data.speaker != -1) {
+                text = "<span class=\"speaker-" + data.speaker + "\">Speaker " + data.speaker + ": " + text + "</span>";
+            }
+            if (data.score != -1) {
+                text += "(Sentiment:" + data.score + ")";
+            }
+
+            if (data.emotion != null) {
+                text += "(Emotion: <img src=\"/static/emoji/" + data.emotion.tone_id+".png\" width=18 height=18>)";
+            }
+
+            res[data.service].push(text);
+           // if (res[data.service].length > 1000) {
+             //   res[data.service].pop(0);
+            //}
+
+            var html = "<ul>";
+
+            for (var k in res[data.service]) {
+                html+="<li>" + res[data.service][res[data.service].length - k - 1] + "</li>";
+            }
+            html+="</ul>";
+
+
+
+            var element = document.getElementById("service-selected");
+            var radios = document.getElementsByClassName("selectable-service");
+
+            for (var i = 0, length = radios.length; i < length; i++) {
+                if (radios[i].checked) {
+                    element.innerHTML = radios[i].value;
+                    if (data.service == radios[i].value) {
+                        document.getElementById("result").innerHTML = html;
+                    }
+                }
+            }
+        }
+    </script>
+</body>
+</html>
